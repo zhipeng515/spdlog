@@ -150,7 +150,7 @@ constexpr inline unsigned short eol_size()
 inline int fopen_s(FILE** fp, const std::string& filename, const char* mode)
 {
 #ifdef _WIN32
-    *fp = _fsopen((filename.c_str()), mode, _SH_DENYWR);
+    *fp = _fsopen((filename.c_str()), mode, _SH_DENYNO);
     return *fp == nullptr;
 #else
     *fp = fopen((filename.c_str()), mode);
@@ -165,12 +165,29 @@ inline int utc_minutes_offset(const std::tm& tm = details::os::localtime())
 {
 
 #ifdef _WIN32
-    (void)tm; // avoid unused param warning
-    DYNAMIC_TIME_ZONE_INFORMATION tzinfo;
-    auto rv = GetDynamicTimeZoneInformation(&tzinfo);
-    if (!rv)
+#if _WIN32_WINNT >= 0x0600
+	_CRT_UNUSED(tm);
+	DYNAMIC_TIME_ZONE_INFORMATION tzinfo;
+    DWORD rv = GetDynamicTimeZoneInformation(&tzinfo);
+    if (rv == TIME_ZONE_ID_INVALID)
         return -1;
-    return -1 * (tzinfo.Bias + tzinfo.DaylightBias);
+	if(rv == TIME_ZONE_ID_DAYLIGHT)
+	    return -1 * (tzinfo.Bias + tzinfo.DaylightBias);
+	return -1 * (tzinfo.Bias);
+#else
+	_CRT_UNUSED(tm);
+	SYSTEMTIME stLocal;
+	FILETIME ftLocal, ftUTC;
+	ULARGE_INTEGER uliLocal, uliUTC;
+	GetLocalTime(&stLocal);
+	SystemTimeToFileTime(&stLocal, &ftLocal);
+	uliLocal.LowPart = ftLocal.dwLowDateTime;
+	uliLocal.HighPart = ftLocal.dwHighDateTime;
+	LocalFileTimeToFileTime(&ftLocal, &ftUTC);
+	uliUTC.LowPart = ftUTC.dwLowDateTime;
+	uliUTC.HighPart = ftUTC.dwHighDateTime;
+	return static_cast<int>((uliLocal.QuadPart - uliUTC.QuadPart) / (10 * 1000 * 1000 * 60));
+#endif
 #else
     return static_cast<int>(tm.tm_gmtoff / 60);
 #endif

@@ -73,7 +73,7 @@ class rotating_file_sink : public base_sink < Mutex >
 public:
     rotating_file_sink(const std::string &base_filename, const std::string &extension,
                        std::size_t max_size, std::size_t max_files,
-                       bool force_flush = false) :
+                       bool force_flush = false, bool truncate = false) :
         _base_filename(base_filename),
         _extension(extension),
         _max_size(max_size),
@@ -81,7 +81,7 @@ public:
         _current_size(0),
         _file_helper(force_flush)
     {
-        _file_helper.open(calc_filename(_base_filename, 0, _extension));
+        _file_helper.open(calc_filename(_base_filename, 0, _extension), truncate);
     }
 
     void flush() override

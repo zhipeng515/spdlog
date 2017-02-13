@@ -604,7 +604,7 @@ public:
 #else
     typedef Char *CharPtr;
 #endif
-    static Char cast(wchar_t value) {
+    static Char cast(int value) {
         return static_cast<Char>(value);
     }
 };
